@@ -434,8 +434,8 @@ Pengujian dari Eiri:
 telnet 10.190.2.2
 # Login: phantom_user / wired_ghost
 ```
-![](assets/Screenshot(1174).png)
-![](assets/Screenshot(1175).png)
+![](assets/Screenshot%20(1174).png)
+![](assets/Screenshot%20(1175).png)
 Hasil Analisis Wireshark (Follow TCP Stream): Kredensial (phantom_user dan wired_ghost) terlihat jelas dalam bentuk plain text. Setiap karakter yang diketik dikirim dalam segmen TCP terpisah karena Telnet menggunakan mode character-at-a-time.
 
 Soal 12: Port Scanning dengan Netcat & Analisis TCP Flag
@@ -451,14 +451,14 @@ nc -zv 10.190.3.2 22
 nc -zv 10.190.3.2 80
 nc -zv 10.190.3.2 7777
 ```
-![](assets/Screenshot(1176).png)
+![](assets/Screenshot%20(1176).png)
 
 Tampilan pada Wireshark :
-![](assets/Screenshot(1182).png)
+![](assets/Screenshot%20(1182).png)
 nc -zv 10.190.3.2 22
-![](assets/Screenshot(1183).png)
+![](assets/Screenshot%20(1183).png)
 nc -zv 10.190.3.2 80
-![](assets/Screenshot(1184).png)
+![](assets/Screenshot%20(1184).png)
 nc -zv 10.190.3.2 7777
 
 Analisis Wireshark:
@@ -480,21 +480,21 @@ Generate Key Pair di Mika:
 ssh-keygen -t rsa -b 2048
 ssh-copy-id mika_admin@10.190.3.2
 ```
-![](assets/Screenshot(1185).png)
-![](assets/Screenshot(1186).png)
-![](assets/Screenshot(1187).png)
-![](assets/Screenshot(1188).png)
+![](assets/Screenshot%20(1185).png)
+![](assets/Screenshot%20(1186).png)
+![](assets/Screenshot%20(1187).png)
+![](assets/Screenshot%20(1188).png)
 Pengujian & Analisis: Koneksi berhasil tanpa password. Pada Wireshark (filter ssh), terlihat proses Protocol Version Exchange dan Key Exchange (KEX). Setelah negosiasi kunci, seluruh sesi terenkripsi end-to-end, mencegah kebocoran kredensial layaknya Telnet.
 
 Soal 14: Investigasi Brute-Force Serangan Web (wired_bruteforce.pcapng)
 Kronologi & Langkah Pengerjaan:
 Buka file di Wireshark :
-![](assets/Screenshot(1189).png)
+![](assets/Screenshot%20(1189).png)
 1. Alamat IP Penyerang & Target (Beserta Port):
 -Ketik filter di Wireshark: http atau tcp.port == 80 (atau port web server yang digunakan).
 -IP Penyerang: Lihat alamat IP dari node Eiri yang mengirimkan banyak permintaan HTTP secara beruntun (biasanya terlihat pengulangan POST request ke form login).
 -Target IP & Port: Lihat alamat IP Alice (sebagai web server) dan port yang diserang (biasanya port 80 untuk HTTP atau 443 untuk HTTPS).
-![](assets/Screenshot(1190).png)
+![](assets/Screenshot%20(1190).png)
 IP Penyerang (Attacker): 172.26.7.50 (karena IP ini yang terus-menerus mengirimkan POST /login.php secara beruntun).
 Target IP: 172.26.7.100 (IP server yang diserang).
 Port yang Diserang: Berdasarkan panel bawah bagian Transmission Control Protocol, target menggunakan Port 8080 (Dst Port: 8080).
@@ -502,21 +502,21 @@ Port yang Diserang: Berdasarkan panel bawah bagian Transmission Control Protocol
 2. Password lain_admin yang Berhasil Ditembus:
 -Ketik filter untuk melihat isi paket HTTP POST: http.request.method == "POST" atau klik kanan pada salah satu paket HTTP POST > Follow > TCP Stream.
 -Scroll ke bawah pada aliran stream tersebut untuk melihat percobaan brute-force beruntun hingga ditekan kombinasi password untuk user lain_admin yang memberikan respons sukses (misalnya kode status HTTP 200 OK atau redirect, berbeda dari percobaan sebelumnya yang gagal). Password yang berhasil tembus biasanya ada di baris percobaan terakhir user tersebut.
-![](assets/Screenshot(1191).png)
+![](assets/Screenshot%20(1191).png)
 Password = wired_pr0tocol_7
 
 3. Web Server Software & Versi pada Response Header:
 -Cari paket balasan HTTP dari server (biasanya bertuliskan HTTP/1.1 200 OK atau 302 Found).
 -Klik paket tersebut, lalu lihat bagian Hypertext Transfer Protocol di panel tengah.
 -Cari baris Server: (contoh: Apache/2.4.38 (Debian), nginx/1.14.2, dll.) untuk mencatat software web server beserta versi persisnya.
-![](assets/Screenshot(1192).png)
+![](assets/Screenshot%20(1192).png)
 Server = Apache/2.4.62
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3401
 ```
-![](assets/Screenshot(1194).png)
+![](assets/Screenshot%20(1194).png)
 Flag: KOMJAR26{W1r3d_Brut3_ofGWOszZFdRWl2gbaXEJsvORj}
 
 Soal 15: Investigasi Perangkat USB HID / Rubber Ducky (wired_usb_hid.pcap)
@@ -529,19 +529,19 @@ Soal 15: Investigasi Perangkat USB HID / Rubber Ducky (wired_usb_hid.pcap)
 Vendor ID (VID) & Product ID (PID):
 -Ketik filter di kolom atas Wireshark: usb.descriptor atau usb (cari paket yang mengandung USB Device Descriptor).
 -Cari paket yang menampilkan rincian perangkat (Device Descriptor). Di panel tengah (Packet Details), luaskan bagian USB Device Descriptor, di sana  akan melihat nilai idVendor (misalnya 0x1d6b atau format 4 digit hex) dan idProduct (misalnya 0x0104). 
-![](assets/Screenshot(1195).png)
+![](assets/Screenshot%20(1195).png)
 idVendor = Logitech, Inc. (0x046d)
 idProduct = Keyboard K120 (0xc31c)
 
 Alamat Nomor Device USB (Device Address):
 -Di dalam paket penjelas perangkat USB yang sama (atau paket USB URB awal), cari atribut bernama Bus ID dan Device Address (biasanya berupa angka desimal kecil seperti 3 atau 2). Nilai --Device Address inilah yang ditanyakan.
-![](assets/Screenshot(1196).png)
+![](assets/Screenshot%20(1196).png)
 USB Device Address signed to keyboard = 7
 
 Pesan Rahasia dari Keystroke (USB HID Keyboard Data):
 -Ketik filter untuk melihat lalu lintas data keyboard: usb.capdata atau usbhid.
 -Perangkat rubber ducky / keyboard berbahaya mengirimkan data keystroke melalui paket Interrupt Transfer (biasanya berupa Leftover Capture Data sepanjang 8 byte).
-![](assets/Screenshot(1199).png)
+![](assets/Screenshot%20(1199).png)
 Karena data mentah USB HID berupa scancode (kode tombol, misal 0x04 untuk huruf 'a'),  bisa melihat kolom Info atau mengekstrak datanya menggunakan skrip Python sederhana (seperti menggunakan pustaka pyshark atau dpkt) untuk menerjemahkan scancode tersebut menjadi string teks pesan rahasia yang diketikkan ke node Alice.
 
 3. Skrip Python untuk Ekstrak Keystroke USB HID (pyshark)
@@ -597,7 +597,7 @@ Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3402
 ```
-![](assets/Screenshot(1202).png)
+![](assets/Screenshot%20(1202).png)
 Flag: KOMJAR26{USB_K3ystr0k3_zWwnYRYEEQXKwDvQBtrYQ0mHf}
 
 Soal 16: Investigasi Pencurian Data via FTP (wired_ftp_theft.pcap)
@@ -650,7 +650,7 @@ Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3403
 ```
-![](assets/Screenshot(1203).png)
+![](assets/Screenshot%20(1203).png)
 Flag: KOMJAR26{FTP_Th3ft_R2ezQCoEsXG66qwXkkMeQTanq}
 
 Soal 17: Investigasi Command & Control (C2) HTTP (wired_http_c2.pcap)
@@ -659,7 +659,7 @@ Kronologi & Langkah Pengerjaan:
 Ketik filter di bagian atas dengan:
 http.request or http.response
 atau cukup ketik http untuk melihat seluruh percakapan HTTP.
-![](assets/Screenshot(1204).png)
+![](assets/Screenshot%20(1204).png)
 
 2. Perhatikan paket nomor 30 (Metode GET):
 Di kolom Info tertulis GET /navi_agent.exe HTTP/1.1.
@@ -668,7 +668,7 @@ Alamat IP Server Penyerang (Destination dari paket 30 / Source dari paket 31):
 IP Tujuan/Sumber pada transaksi tersebut adalah 203.0.113.42.
 Kode Status HTTP:
 Perhatikan paket nomor 31 (respons dari server). Di kolom Info tertulis HTTP/1.1 200 OK. Jadi kode statusnya adalah 200 (atau 200 OK).
-![](assets/Screenshot(1205).png)
+![](assets/Screenshot%20(1205).png)
 
 3. Cari aktivitas unduhan file (biasanya metode GET):
 -Nama Domain (Host): Lihat pada kolom Host atau Line-based text data di rincian paket GET untuk mengetahui nama domain tempat file tersebut diambil.
@@ -686,7 +686,7 @@ Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3404
 ```
-![](assets/Screenshot(1206).png)
+![](assets/Screenshot%20(1206).png)
 Flag: KOMJAR26{Navi_C2_D0wnl04d_uApWZjAmB2PSUAqwE8pqLXhom}
 
 Soal 18: Investigasi Transfer Malware via SMB (wired_smb_transfer.pcapng)
@@ -711,7 +711,7 @@ Jadi folder tujuannya adalah ADMIN$ (atau path lengkapnya di folder System32).
 4. Nama File Executable Malware yang Ditransfer
 Perhatikan kolom Info pada paket 16, 20, dan 24: Create Request, File: System32\wired_trojan_payload.exe
 Nama file malware yang ditransfer adalah wired_trojan_payload.exe.
-![](assets/Screenshot(1207).png)
+![](assets/Screenshot%20(1207).png)
 
 RANGKUMAN
 -Protokol: SMB2 (atau SMB)
@@ -724,7 +724,7 @@ Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3405
 ```
-![](assets/Screenshot(1208).png)
+![](assets/Screenshot%20(1208).png)
 Flag: KOMJAR26{SMB_Tr4nsf3r_Tssoap3oiw7cU1I0Eq7fldJSv}
 
 Soal 19: Investigasi Ancaman Pemerasan SMTP Tanpa Enkripsi (wired_smtp_threat.pcap)
@@ -742,11 +742,11 @@ Cari poin-poin data yang diminta oleh soal pada teks percakapan (Stream):
 -Jenis Malware yang Diinfeksikan: Baca teks ancaman untuk mengetahui jenis malware yang diklaim telah disusupkan ke perangkat korban (misalnya Trojan, Spyware, Pegasus, RedLine, dll.).
 -Batas Waktu (dalam hari): Cari angka durasi hari yang diberikan oleh penyerang untuk melakukan tebusan (misalnya 1 day, 2 days, 3 days, dll.).
 -MailClientID: Cari string identifier atau MailClientID khusus yang tercantum di bagian footer/t tangan pesan email tersebut.
-![](assets/Screenshot(1213).png)
-![](assets/Screenshot(1214).png)
+![](assets/Screenshot%20(1213).png)
+![](assets/Screenshot%20(1214).png)
 Dua tangkapan layar terbaru (Screenshot 1213 dan 1214) menunjukkan bahwa kita sedang melihat tcp.stream eq 4, yang isinya diblokir oleh spam filter (550 Blocked by spam filter). Itu berarti ancaman tersebut ada di stream TCP nomor lain yang berhasil lolos. 
-![](assets/Screenshot(1215).png)
-![](assets/Screenshot(1216).png)
+![](assets/Screenshot%20(1215).png)
+![](assets/Screenshot%20(1216).png)
 
 RANGKUMAN
 Alamat Email Korban (Targeted Email): victim@protocol7.co.jp (terlihat pada baris RCPT TO:<victim@protocol7.co.jp> / To:).
@@ -760,7 +760,7 @@ Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3406
 ```
-![](assets/Screenshot(1217).png)
+![](assets/Screenshot%20(1217).png)
 Flag: KOMJAR26{SMTP_Ext0rt10n_ZFLfjUJOsNM9wPysEm9m3ZIlt}
 
 Soal 20: Dekripsi Trafik TLS dengan Keylog (wired_tls_decrypt.pcapng)
@@ -774,8 +774,8 @@ Klik OK / Save.
 Cara Menekan Data untuk Port 3407:
 Setelah didekripsi, ketik filter di bagian atas Wireshark:
 http or tls
-![](assets/Screenshot(1218).png)
-![](assets/Screenshot(1219).png)
+![](assets/Screenshot%20(1218).png)
+![](assets/Screenshot%20(1219).png)
 
 RANGKUMAN
 Versi Protokol TLS: TLSv1.2 (terlihat pada Info paket nomor 1 dan rincian Client Hello).
@@ -788,7 +788,7 @@ Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3407
 ```
-![](assets/Screenshot(1220).png)
+![](assets/Screenshot%20(1220).png)
 Flag: KOMJAR26{TLS_D3crypt_cTtcuYV9AqEArZEauyuYNJzim}
 
 KESIMPULAN
