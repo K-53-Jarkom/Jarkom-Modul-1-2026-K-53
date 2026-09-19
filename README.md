@@ -434,6 +434,8 @@ Pengujian dari Eiri:
 telnet 10.190.2.2
 # Login: phantom_user / wired_ghost
 ```
+![](assets/Screenshot(1174).png)
+![](assets/Screenshot(1175).png)
 Hasil Analisis Wireshark (Follow TCP Stream): Kredensial (phantom_user dan wired_ghost) terlihat jelas dalam bentuk plain text. Setiap karakter yang diketik dikirim dalam segmen TCP terpisah karena Telnet menggunakan mode character-at-a-time.
 
 Soal 12: Port Scanning dengan Netcat & Analisis TCP Flag
@@ -449,9 +451,20 @@ nc -zv 10.190.3.2 22
 nc -zv 10.190.3.2 80
 nc -zv 10.190.3.2 7777
 ```
+![](assets/Screenshot(1176).png)
+
+Tampilan pada Wireshark :
+![](assets/Screenshot(1182).png)
+nc -zv 10.190.3.2 22
+![](assets/Screenshot(1183).png)
+nc -zv 10.190.3.2 80
+![](assets/Screenshot(1184).png)
+nc -zv 10.190.3.2 7777
+
 Analisis Wireshark:
 Port Terbuka (22 & 80): Server merespons paket SYN dari Alice dengan flag SYN-ACK.
 Port Tertutup (7777): Server merespons dengan flag RST-ACK (Reset-Acknowledgment).
+
 
 Soal 13: Konfigurasi SSH Aman dengan Public Key Authentication
 Konfigurasi Server (Knights):
@@ -467,95 +480,315 @@ Generate Key Pair di Mika:
 ssh-keygen -t rsa -b 2048
 ssh-copy-id mika_admin@10.190.3.2
 ```
+![](assets/Screenshot(1185).png)
+![](assets/Screenshot(1186).png)
+![](assets/Screenshot(1187).png)
+![](assets/Screenshot(1188).png)
 Pengujian & Analisis: Koneksi berhasil tanpa password. Pada Wireshark (filter ssh), terlihat proses Protocol Version Exchange dan Key Exchange (KEX). Setelah negosiasi kunci, seluruh sesi terenkripsi end-to-end, mencegah kebocoran kredensial layaknya Telnet.
 
 Soal 14: Investigasi Brute-Force Serangan Web (wired_bruteforce.pcapng)
 Kronologi & Langkah Pengerjaan:
-1. Membuka dan menganalisis berkas packet capture forensik menggunakan Wireshark untuk melacak anomali trafik HTTP/TCP pada port 8080.
-2. Mengidentifikasi alamat IP penyerang (172.26.7.50 atas nama Eiri) yang melakukan percobaan login berulang kali ke server target (172.26.7.100).
-3. Menemukan kata sandi akun lain_admin yang berhasil dibobol, yaitu wired_pr0tocol_7, serta mendeteksi versi web server yang digunakan (Apache/2.4.62).
-4. Memasukkan jawaban investigasi ke socket server validasi kelompok untuk mendapatkan flag pengerjaan.
+Buka file di Wireshark :
+![](assets/Screenshot(1189).png)
+1. Alamat IP Penyerang & Target (Beserta Port):
+-Ketik filter di Wireshark: http atau tcp.port == 80 (atau port web server yang digunakan).
+-IP Penyerang: Lihat alamat IP dari node Eiri yang mengirimkan banyak permintaan HTTP secara beruntun (biasanya terlihat pengulangan POST request ke form login).
+-Target IP & Port: Lihat alamat IP Alice (sebagai web server) dan port yang diserang (biasanya port 80 untuk HTTP atau 443 untuk HTTPS).
+![](assets/Screenshot(1190).png)
+IP Penyerang (Attacker): 172.26.7.50 (karena IP ini yang terus-menerus mengirimkan POST /login.php secara beruntun).
+Target IP: 172.26.7.100 (IP server yang diserang).
+Port yang Diserang: Berdasarkan panel bawah bagian Transmission Control Protocol, target menggunakan Port 8080 (Dst Port: 8080).
+
+2. Password lain_admin yang Berhasil Ditembus:
+-Ketik filter untuk melihat isi paket HTTP POST: http.request.method == "POST" atau klik kanan pada salah satu paket HTTP POST > Follow > TCP Stream.
+-Scroll ke bawah pada aliran stream tersebut untuk melihat percobaan brute-force beruntun hingga ditekan kombinasi password untuk user lain_admin yang memberikan respons sukses (misalnya kode status HTTP 200 OK atau redirect, berbeda dari percobaan sebelumnya yang gagal). Password yang berhasil tembus biasanya ada di baris percobaan terakhir user tersebut.
+![](assets/Screenshot(1191).png)
+Password = wired_pr0tocol_7
+
+3. Web Server Software & Versi pada Response Header:
+-Cari paket balasan HTTP dari server (biasanya bertuliskan HTTP/1.1 200 OK atau 302 Found).
+-Klik paket tersebut, lalu lihat bagian Hypertext Transfer Protocol di panel tengah.
+-Cari baris Server: (contoh: Apache/2.4.38 (Debian), nginx/1.14.2, dll.) untuk mencatat software web server beserta versi persisnya.
+![](assets/Screenshot(1192).png)
+Server = Apache/2.4.62
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3401
 ```
+![](assets/Screenshot(1194).png)
 Flag: KOMJAR26{W1r3d_Brut3_ofGWOszZFdRWl2gbaXEJsvORj}
 
 Soal 15: Investigasi Perangkat USB HID / Rubber Ducky (wired_usb_hid.pcap)
-Kronologi & Langkah Pengerjaan:
-1. Menganalisis paket USB packet capture untuk menyelidiki anomali perangkat Human Interface Device (HID) yang terdeteksi menancap pada sistem.
-2. Mengidentifikasi atribut perangkat berdasarkan Vendor ID (0x046d milik Logitech K120 Keyboard) dan alamat USB device (7).
-3. Menggunakan pustaka skrip Python berbasis pyshark untuk mengekstrak data keystroke mentah dari laporan interupsi USB.
-4. Menggabungkan deretan karakter hasil ekstraksi yang membentuk string pesan rahasia: wiredprotocol7isalive2026.
-5. Mengirimkan data ke socket server validasi untuk memperoleh flag.
+1. Kronologi & Langkah Pengerjaan:
+-Buka File .pcap di Wireshark
+-Unduh file wired_usb_hid.pcap dari tautan Google Drive praktikum.
+-Buka aplikasi Wireshark dan buka file tersebut.
+
+2. Cara Mengidentifikasi Parameter di Wireshark
+Vendor ID (VID) & Product ID (PID):
+-Ketik filter di kolom atas Wireshark: usb.descriptor atau usb (cari paket yang mengandung USB Device Descriptor).
+-Cari paket yang menampilkan rincian perangkat (Device Descriptor). Di panel tengah (Packet Details), luaskan bagian USB Device Descriptor, di sana  akan melihat nilai idVendor (misalnya 0x1d6b atau format 4 digit hex) dan idProduct (misalnya 0x0104). 
+![](assets/Screenshot(1195).png)
+idVendor = Logitech, Inc. (0x046d)
+idProduct = Keyboard K120 (0xc31c)
+
+Alamat Nomor Device USB (Device Address):
+-Di dalam paket penjelas perangkat USB yang sama (atau paket USB URB awal), cari atribut bernama Bus ID dan Device Address (biasanya berupa angka desimal kecil seperti 3 atau 2). Nilai --Device Address inilah yang ditanyakan.
+![](assets/Screenshot(1196).png)
+USB Device Address signed to keyboard = 7
+
+Pesan Rahasia dari Keystroke (USB HID Keyboard Data):
+-Ketik filter untuk melihat lalu lintas data keyboard: usb.capdata atau usbhid.
+-Perangkat rubber ducky / keyboard berbahaya mengirimkan data keystroke melalui paket Interrupt Transfer (biasanya berupa Leftover Capture Data sepanjang 8 byte).
+![](assets/Screenshot(1199).png)
+Karena data mentah USB HID berupa scancode (kode tombol, misal 0x04 untuk huruf 'a'),  bisa melihat kolom Info atau mengekstrak datanya menggunakan skrip Python sederhana (seperti menggunakan pustaka pyshark atau dpkt) untuk menerjemahkan scancode tersebut menjadi string teks pesan rahasia yang diketikkan ke node Alice.
+
+3. Skrip Python untuk Ekstrak Keystroke USB HID (pyshark)
+Jika  memiliki Python dan pustaka pyshark (pip install pyshark),  bisa simpan skrip ini dengan nama decode_usb.py di folder yang sama dengan file soal15_wired_usb_hid.pcap:
+```BASH
+Python
+# Tabel pemetaan scancode USB HID str
+scancode_map = {
+    0x04: "a", 0x05: "b", 0x06: "c", 0x07: "d", 0x08: "e",
+    0x09: "f", 0x0a: "g", 0x0b: "h", 0x0c: "i", 0x0d: "j",
+    0x0e: "k", 0x0f: "l", 0x10: "m", 0x11: "n", 0x12: "o",
+    0x13: "p", 0x14: "q", 0x15: "r", 0x16: "s", 0x17: "t",
+    0x18: "u", 0x19: "v", 0x1a: "w", 0x1b: "x", 0x1c: "y",
+    0x1d: "z", 0x2c: " ", 0x28: "\n",
+    0x1e: "1", 0x1f: "2", 0x20: "3", 0x21: "4", 0x22: "5",
+    0x23: "6", 0x24: "7", 0x25: "8", 0x26: "9", 0x27: "0"
+}
+
+def parse_text_file(filename):
+    message = ""
+    with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            # Cari baris yang mengandung Leftover Capture Data
+            if "Leftover Capture Data:" in line or "capdata:" in line:
+                parts = line.split(":")
+                if len(parts) > 1:
+                    hex_str = parts[1].strip().replace(":", "").replace(" ", "")
+                    if len(hex_str) >= 6:
+                        # Ambil byte ke-3 (karakter ke 4 dan 5 di string hex)
+                        try:
+                            scancode_hex = hex_str[4:6]
+                            scancode = int(scancode_hex, 16)
+                            if scancode in scancode_map:
+                                message += scancode_map[scancode]
+                        except ValueError:
+                            continue
+                            
+    print("=== PESAN RAHASIA USB HID ===")
+    print(message)
+```
+
+parse_text_file("data_usb.txt")
+
+Cara Pakai:
+Simpan skrip di atas, lalu jalankan lewat terminal/Command Prompt:
+```BASH
+python decode_usb.py
+```
+Skrip akan otomatis membaca file .pcap, memfilter data USB, menerjemahkan kodenya, dan menampilkan teks pesan rahasianya secara utuh di layar terminal!
+CODE = wired_protocol_7_isalive2026
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3402
 ```
+![](assets/Screenshot(1202).png)
 Flag: KOMJAR26{USB_K3ystr0k3_zWwnYRYEEQXKwDvQBtrYQ0mHf}
 
 Soal 16: Investigasi Pencurian Data via FTP (wired_ftp_theft.pcap)
 Kronologi & Langkah Pengerjaan:
-1. Melakukan inspeksi pada file packet capture aktivitas protokol FTP untuk melacak pencurian file sensitif.
-2. Mengidentifikasi IP server FTP korban (198.51.100.7), banner aplikasi (vsftpd 3.0.5), serta kredensial akun penyerang (knights_agent dengan sandi N4v1_s3cur3_2026).
-3. Membaca respons perintah FTP Size (213 524288) untuk mengetahui ukuran persis file eksfiltrasi knights_payload.exe yaitu sebesar 524288 bytes.
-4. Menginput hasil investigasi ke socket server kelompok guna mengklaim flag.
+1. Identifikasi Alamat IP Server FTP Penyerang & Banner Software
+-Buka file wired_ftp_theft.pcap menggunakan Wireshark.
+-Filter lalu lintas FTP dengan mengetikkan ftp atau ftp-data pada kolom filter atas.
+-Cari paket awal di mana koneksi TCP dibuat dan server merespons klien.
+-Banner Software: Pada paket tanggapan pertama dari server (biasanya kode respons 220),  akan melihat teks banner selamat datang dari server FTP yang mencantumkan nama dan versi software (misalnya, vsftpd atau ProFTPD beserta versinya).
+-IP Server: Alamat IP sumber dari paket yang mengirimkan banner 220 tersebut adalah alamat IP server FTP.
+
+JAWABAN 
+-Perhatikan paket nomor 64 (Source: 198.51.100.7, Destination: 10.7.3.50).
+-IP Server FTP: 198.51.100.7
+-Banner Software: Pada Info paket 64 tertulis:
+-Response: 220 Welcome to Wired FTP Server (vsftpd 3.0.5)
+Jadi banner software-nya adalah vsftpd 3.0.5 (atau lengkapnya: Welcome to Wired FTP Server (vsftpd 3.0.5)).
+
+2. Identifikasi Kredensial Login Penyerang
+Cari paket yang berisi perintah autentikasi FTP dalam bentuk teks jelas (cleartext):
+-USER [username]: Menunjukkan nama pengguna yang digunakan penyerang untuk masuk.
+-PASS [password]: Menunjukkan kata sandi yang dikirimkan setelahnya.
+Karena FTP str tidak mengenkripsi kredensial, username dan password akan terlihat secara langsung pada Packet Details (Transmission Control Protocol / File Transfer Protocol).
+
+JAWABAN 
+Perhatikan paket setelahnya yang melibatkan IP 10.7.3.50 dan 198.51.100.7:
+-User (Paket 66): USER knights_agent $\rightarrow$ Username: knights_agent
+-Pass (Paket 70): PASS N4v1_s3cur3_2026 $\rightarrow$ Password: N4v1_s3cur3_2026
+
+3. Identifikasi Ukuran File Malware (knights_payload.exe)
+-Lanjutkan pencarian pada aliran (follow stream) atau filter percakapan FTP untuk melihat perintah transfer file, seperti RETR knights_payload.exe (mengunduh file).
+Untuk mengetahui ukuran byte secara persis:
+-Cari paket respons dari server yang mengonfirmasi transfer atau gunakan informasi dari aliran paket data FTP (ftp-data). juga dapat melihat ringkasan paket transfer atau mengecek Packet Length dari segmen TCP yang membawa payload file tersebut, atau melihat detail respons perintah seperti 150 Opening BINARY mode data connection hingga 226 Transfer complete yang sering kali menyertakan informasi ukuran file dalam byte.
+
+JAWABAN
+Perhatikan paket nomor 82 dan 84:
+-Paket 82: Request: SIZE knights_payload.exe (dari klien 10.7.3.50)
+-Paket 84: Response: 213 524288 (dari server 198.51.100.7)
+-Angka 213 adalah kode status FTP untuk file size, dan angka di belakangnya yaitu 524288 adalah ukuran file tersebut dalam bytes.
+Jadi ukuran filenya adalah 524288 bytes.
+
+RANGKUMAN JAWABAN 
+IP Server FTP: 198.51.100.7
+Banner: vsftpd 3.0.5 (atau Welcome to Wired FTP Server (vsftpd 3.0.5))
+Username: knights_agent
+Password: N4v1_s3cur3_2026
+File Size: 524288
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3403
 ```
+![](assets/Screenshot(1203).png)
 Flag: KOMJAR26{FTP_Th3ft_R2ezQCoEsXG66qwXkkMeQTanq}
 
 Soal 17: Investigasi Command & Control (C2) HTTP (wired_http_c2.pcap)
 Kronologi & Langkah Pengerjaan:
-Memeriksa file packet capture komunikasi HTTP untuk mendeteksi adanya aktivitas komunikasi Command and Control (C2) malware.
-Menelusuri permintaan DNS dan HTTP GET untuk menemukan nama domain pengendali (wired-update.net), alamat IP server (203.0.113.42), nama file muatan jahat yang diunduh (navi_agent.exe), serta kode status HTTP sukses (200 OK).
-Melakukan verifikasi jawaban ke socket server kelompok untuk mendapatkan flag.
+1. Buka file wired_http_c2.pcap di Wireshark.
+Ketik filter di bagian atas dengan:
+http.request or http.response
+atau cukup ketik http untuk melihat seluruh percakapan HTTP.
+![](assets/Screenshot(1204).png)
+
+2. Perhatikan paket nomor 30 (Metode GET):
+Di kolom Info tertulis GET /navi_agent.exe HTTP/1.1.
+Nama file malware: navi_agent.exe
+Alamat IP Server Penyerang (Destination dari paket 30 / Source dari paket 31):
+IP Tujuan/Sumber pada transaksi tersebut adalah 203.0.113.42.
+Kode Status HTTP:
+Perhatikan paket nomor 31 (respons dari server). Di kolom Info tertulis HTTP/1.1 200 OK. Jadi kode statusnya adalah 200 (atau 200 OK).
+![](assets/Screenshot(1205).png)
+
+3. Cari aktivitas unduhan file (biasanya metode GET):
+-Nama Domain (Host): Lihat pada kolom Host atau Line-based text data di rincian paket GET untuk mengetahui nama domain tempat file tersebut diambil.
+-Alamat IP Server Penyerang: Lihat pada Destination IP (atau Source IP pada respons server) dari server tempat file diunduh.
+-Nama File Executable Malware: Cari jalur URL atau URI Path pada permintaan GET yang berakhiran ekstensi program (seperti .exe).
+-Kode Status HTTP: Lihat pada paket balasan dari server (biasanya paket HTTP/1.1 200 OK atau kode status lainnya) di kolom Info.
+
+RANGKUMAN 
+-Nama Domain / Host: wired-update.net 
+-Alamat IP Server: 203.0.113.42
+-Nama File Malware: navi_agent.exe
+-Kode Status HTTP: 200 (atau 200 OK)
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3404
 ```
+![](assets/Screenshot(1206).png)
 Flag: KOMJAR26{Navi_C2_D0wnl04d_uApWZjAmB2PSUAqwE8pqLXhom}
 
 Soal 18: Investigasi Transfer Malware via SMB (wired_smb_transfer.pcapng)
 Kronologi & Langkah Pengerjaan:
-Menganalisis protokol SMBv2 di dalam file packet capture untuk melacak pergerakan lateral file berbahaya antar komputer dalam jaringan lokal.
-Mengidentifikasi alamat IP pengirim (10.7.3.100), IP penerima (10.7.1.50), struktur share folder tujuan (ADMIN$ / System32), serta nama file eksekusi malware (wired_trojan_payload.exe).
-Memasukkan detail investigasi ke socket server validasi untuk memunculkan flag.
+1. Ketik filter di bagian atas untuk menyaring lalu lintas SMB:
+smb or smb2
+
+Nama File Executable Malware: Cari nama file ber-ekstensi program (seperti .exe) yang dikirim atau dibuat melalui perintah SMB tersebut.
+1. Nama Protokol Jaringan yang Dieksploitasi
+Terlihat pada kolom Protocol dan rincian paket, protokol yang digunakan adalah SMB2 (atau SMB).
+
+2. IP Pengirim dan Penerima
+IP Pengirim (Source): 10.7.3.100 (klien yang melakukan permintaan tulis/transfer file).
+IP Penerima (Destination): 10.7.1.50 (server korban/tujuan).
+
+3. Folder Tujuan Penyimpanan Malware pada Sistem Korban
+Perhatikan paket nomor 12 (Tree Connect Request) atau paket-paket Create Request di bawahnya.
+Pada Info paket 12 tertulis: Tree Connect Request, Tree: '\\10.7.1.50\ADMIN$'.
+Selain itu, pada file Create Request (seperti paket 16), file diletakkan di dalam direktori System32.
+Jadi folder tujuannya adalah ADMIN$ (atau path lengkapnya di folder System32).
+
+4. Nama File Executable Malware yang Ditransfer
+Perhatikan kolom Info pada paket 16, 20, dan 24: Create Request, File: System32\wired_trojan_payload.exe
+Nama file malware yang ditransfer adalah wired_trojan_payload.exe.
+![](assets/Screenshot(1207).png)
+
+RANGKUMAN
+-Protokol: SMB2 (atau SMB)
+-IP Pengirim: 10.7.3.100
+-IP Penerima: 10.7.1.50
+-Folder Tujuan: ADMIN$ / System32
+-Nama File Malware: wired_trojan_payload.exe
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3405
 ```
+![](assets/Screenshot(1208).png)
 Flag: KOMJAR26{SMB_Tr4nsf3r_Tssoap3oiw7cU1I0Eq7fldJSv}
 
 Soal 19: Investigasi Ancaman Pemerasan SMTP Tanpa Enkripsi (wired_smtp_threat.pcap)
 Kronologi & Langkah Pengerjaan:
-Melakukan Follow TCP Stream pada port SMTP di dalam file packet capture untuk membaca isi email ancaman pemerasan (extortion/ransomware).
-Menemukan alamat email korban (victim@protocol7.co.jp), kebocoran sandi akun (pr0tocol_7_user), jenis ancaman ransomware privat, batas waktu tebusan selama 3 hari (72 jam), serta nomor unik pengenal klien (MailClientID: 7719980706).
-Menyubmit data temuan ke socket server validasi untuk klaim flag.
+Buka file wired_smtp_threat.pcap di Wireshark.
+Ketik filter di bagian atas untuk menyaring lalu lintas SMTP atau TCP yang membawa data email:
+
+smtp or tcp.port == 25
+
+(Atau klik kanan pada salah satu paket SMTP, lalu pilih Follow > TCP Stream untuk membaca seluruh isi percakapan dari awal hingga akhir).
+
+Cari poin-poin data yang diminta oleh soal pada teks percakapan (Stream):
+-Alamat Email Korban: Cari pada baris tujuan penerima email (RCPT TO: atau bagian To: di dalam badan pesan).
+-Password Korban: Cari teks di dalam badan email ancaman yang mengeklaim kredensial/password korban telah bocor (biasanya dicantumkan sebagai bukti oleh pemeras).
+-Jenis Malware yang Diinfeksikan: Baca teks ancaman untuk mengetahui jenis malware yang diklaim telah disusupkan ke perangkat korban (misalnya Trojan, Spyware, Pegasus, RedLine, dll.).
+-Batas Waktu (dalam hari): Cari angka durasi hari yang diberikan oleh penyerang untuk melakukan tebusan (misalnya 1 day, 2 days, 3 days, dll.).
+-MailClientID: Cari string identifier atau MailClientID khusus yang tercantum di bagian footer/t tangan pesan email tersebut.
+![](assets/Screenshot(1213).png)
+![](assets/Screenshot(1214).png)
+Dua tangkapan layar terbaru (Screenshot 1213 dan 1214) menunjukkan bahwa kita sedang melihat tcp.stream eq 4, yang isinya diblokir oleh spam filter (550 Blocked by spam filter). Itu berarti ancaman tersebut ada di stream TCP nomor lain yang berhasil lolos. 
+![](assets/Screenshot(1215).png)
+![](assets/Screenshot(1216).png)
+
+RANGKUMAN
+Alamat Email Korban (Targeted Email): victim@protocol7.co.jp (terlihat pada baris RCPT TO:<victim@protocol7.co.jp> / To:).
+Password Korban yang Bocor: pr0tocol_7_user (terlihat pada kalimat "I know that: pr0tocol_7_user - is your password!").
+Jenis Malware yang Diinfeksikan: ransomware (atau private ransomware).
+Batas Waktu (Deadline dalam hari): 3 (terlihat pada kalimat "72 hours (3 days)").
+MailClientID: 7719980706 (terlihat pada bagian bawah baris MailClientID: 7719980706).
+
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3406
 ```
+![](assets/Screenshot(1217).png)
 Flag: KOMJAR26{SMTP_Ext0rt10n_ZFLfjUJOsNM9wPysEm9m3ZIlt}
 
 Soal 20: Dekripsi Trafik TLS dengan Keylog (wired_tls_decrypt.pcapng)
 Kronologi & Langkah Pengerjaan:
-Mengonfigurasi Wireshark dengan memasukkan file kunci sesi pre-master secret (keyslogfile.txt) melalui menu preferensi protokol TLS (Edit > Preferences > Protocols > TLS).
-Melakukan inspeksi ulang pada trafik terenkripsi yang kini berhasil didekripsi secara transparan.
-Mengidentifikasi versi protokol TLS (TLSv1.2), Server Name Indication / SNI (example.com), alamat IP server HTTPS (93.184.216.34), User-Agent (curl/7.62.0), serta metode dan jalur request HTTP (HEAD /).
-Mengirimkan rangkuman hasil dekripsi ke socket server kelompok untuk mendapatkan flag terakhir.
+
+Buka file wired_tls_decrypt.pcapng di Wireshark.
+Di menu atas, pilih Edit > Preferences.
+Di jendela pengaturan sebelah kiri, luaskan menu Protocols, lalu klik TLS (atau SSL pada versi Wireshark lama).
+Pada kolom (Pre)-Master-Secret log filename, klik tombol Browse (atau Folder) dan pilih file keyslogfile.txt  yang sudah berisi baris CLIENT_RANDOM ... tersebut.
+Klik OK / Save.
+Cara Menekan Data untuk Port 3407:
+Setelah didekripsi, ketik filter di bagian atas Wireshark:
+http or tls
+![](assets/Screenshot(1218).png)
+![](assets/Screenshot(1219).png)
+
+RANGKUMAN
+Versi Protokol TLS: TLSv1.2 (terlihat pada Info paket nomor 1 dan rincian Client Hello).
+Nama Domain (SNI): example.com (terlihat langsung pada Info paket 1: Client Hello (SNI=example.com)).
+Alamat IP Server HTTPS Penyerang: 93.184.216.34 (terlihat pada kolom Destination di paket 1 / Source IP dari server).
+User-Agent: curl/7.62.0 (seperti yang terlihat pada header HTTP di tangkapan layar sebelumnya).
+HTTP Request Method & Path: HEAD dan path / (atau HEAD /).
 
 Validasi Socket Server:
 ```BASH
 nc [IP_Group] 3407
 ```
+![](assets/Screenshot(1220).png)
 Flag: KOMJAR26{TLS_D3crypt_cTtcuYV9AqEArZEauyuYNJzim}
 
 KESIMPULAN
