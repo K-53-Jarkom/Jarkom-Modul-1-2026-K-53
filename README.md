@@ -1,74 +1,144 @@
-[LAPORAN MASIH DALAM PROSES! BELUM SELESAI]
-LAPORAN RESMI PRAKTIKUM KOMUNIKASI DATA DAN JARINGAN KOMPUTER
+## LAPORAN RESMI PRAKTIKUM KOMUNIKASI DATA DAN JARINGAN KOMPUTER
 MODUL 1: SERIAL EXPERIMENTS LAIN (THE WIRED)
-Kelompok: K-053
 
-PENDAHULUAN / LATAR BELAKANG
+##### Kelompok: K-053
+
+### PENDAHULUAN / LATAR BELAKANG
 Praktikum Modul 1 Komunikasi Data dan Jaringan Komputer mengangkat tema Serial Experiments Lain, di mana arsitektur jaringan dibangun untuk merepresentasikan sistem The Wired. Praktikum ini berfokus pada konfigurasi dasar router, manajemen antarmuka jaringan (interface), pengaturan NAT/masquerade, firewall, DHCP/DNS resolver, analisis trafik menggunakan Wireshark, konfigurasi FTP server, layanan Telnet, pemindaian port (port scanning) dengan Netcat, pengamanan akses jarak jauh menggunakan SSH Key-based Authentication, serta analisis berbagai file packet capture (pcap) untuk investigasi keamanan siber (analisis brute-force, USB HID keystroke, FTP theft, C2 traffic, SMB transfer, SMTP threat, dan dekripsi TLS).
 
-PEMBAHASAN & LANGKAH PERCOBAAN
-Soal 1 & 2: Konfigurasi Topologi & Alamat IP (GNS3)
-Keterangan Topologi: Node lain bertindak sebagai Router utama yang menghubungkan internet publik via NAT/DHCP pada eth0, serta membagi jaringan ke 3 Switch (Switch 1 untuk Alice & Mika, Switch 2 untuk Chisa, dan Switch 3 untuk Knights & Eiri).
 
-Konfigurasi Interface (/etc/network/interfaces):
-```text
-# Node: lain
+
+## Laporan
+
+### 1. Topologi & Konfigurasi Awal Interface
+
+Untuk mempersiapkan pembangunan The Wired, Lain yang berperan sebagai Router membuat tiga Switch/Gateway: Switch 1 menuju dua entitas yaitu Alice dan Mika, Switch 2 menuju Chisa, sedangkan Switch 3 menuju Knights dan Eiri. Kelima entitas tersebut dikonfigurasi sebagai Client di GNS3.
+#### Topologi
+Router **Lain** membuat tiga Switch/Gateway: Switch 1 menuju dua entitas (**Alice** dan **Mika**), Switch 2 menuju **Chisa**, dan Switch 3 menuju dua entitas (**Knights** dan **Eiri**). Kelima entitas tersebut dikonfigurasi sebagai Client di GNS3, dengan prefix IP kelompok `10.190.x.x`.
+
+**Switch 1**: Menghubungkan Alice dan Mika (Subnet 10.190.1.0/24).
+**Switch 2**: Menghubungkan Chisa (Subnet 10.190.2.0/24).
+**Switch 3**: Menghubungkan Knights dan Eiri (Subnet 10.190.3.0/24).
+
+![](assets/Topologi.png)
+
+**Lain**
+
+```
 auto eth0
 iface eth0 inet dhcp
-
 auto eth1
 iface eth1 inet static
-	address 10.190.1.1
-	netmask 255.255.255.0
-
+    address 10.190.1.1
+    netmask 255.255.255.0
 auto eth2
 iface eth2 inet static
-	address 10.190.2.1
-	netmask 255.255.255.0
-
+    address 10.190.2.1
+    netmask 255.255.255.0
 auto eth3
 iface eth3 inet static
-	address 10.190.3.1
-	netmask 255.255.255.0
-
-# Node: alice
-auto eth0
-iface eth0 inet static
-	address 10.190.1.2
-	netmask 255.255.255.0
-	gateway 10.190.1.1
-
-# Node: mika
-auto eth0
-iface eth0 inet static
-	address 10.190.1.3
-	netmask 255.255.255.0
-	gateway 10.190.1.1
-
-# Node: chisa
-auto eth0
-iface eth0 inet static
-	address 10.190.2.2
-	netmask 255.255.255.0
-	gateway 10.190.2.1
-
-# Node: knights
-auto eth0
-iface eth0 inet static
-	address 10.190.3.2
-	netmask 255.255.255.0
-	gateway 10.190.3.1
-
-# Node: eiri
-auto eth0
-iface eth0 inet static
-	address 10.190.3.3
-	netmask 255.255.255.0
-	gateway 10.190.3.1
+    address 10.190.3.1
+    netmask 255.255.255.0
 ```
-Soal 3 & 4: Konektivitas Antar Entitas & Akses Internet (NAT Masquerade & DNS)
-Perintah Konfigurasi pada Node lain:
-```BASH
+
+**Alice**
+
+```
+auto eth0
+iface eth0 inet static
+    address 10.190.1.2
+    netmask 255.255.255.0
+    gateway 10.190.1.1
+```
+
+**Mika**
+
+```
+auto eth0
+iface eth0 inet static
+    address 10.190.1.3
+    netmask 255.255.255.0
+    gateway 10.190.1.1
+```
+
+**Chisa**
+
+```
+auto eth0
+iface eth0 inet static
+    address 10.190.2.2
+    netmask 255.255.255.0
+    gateway 10.190.2.1
+```
+
+**Knights**
+
+```
+auto eth0
+iface eth0 inet static
+    address 10.190.3.2
+    netmask 255.255.255.0
+    gateway 10.190.3.1
+```
+
+**Eiri**
+
+```
+auto eth0
+iface eth0 inet static
+    address 10.190.3.3
+    netmask 255.255.255.0
+    gateway 10.190.3.1
+```
+
+
+
+### 2. Router Lain Terhubung ke Internet Publik (NAT/DHCP)
+
+Karena menurut Lain pada saat itu The Wired masih terisolasi dari dunia luar, router Lain dikonfigurasikan agar dapat tersambung langsung ke jaringan internet publik melalui NAT/DHCP pada interface `eth0`.
+
+```
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+sysctl -w net.ipv4.ip_forward=1
+```
+
+**Verifikasi:**
+
+```
+ping -c 2 google.com
+```
+![alt text](assets/Screenshot%202026-09-17%20231123.png)
+
+### 3. Konektivitas Antar-Client Melalui Routing
+
+Setelah router Lain terhubung ke internet, seluruh entitas (Client) di bawah Switch 1, Switch 2, dan Switch 3 dapat saling terhubung dan berkomunikasi satu sama lain melalui konfigurasi routing.
+
+Aktifkan IP Forwarding di router Lain:
+
+```
+sysctl -w net.ipv4.ip_forward=1
+```
+
+**Pembuktian — Alice (Subnet 1) ke Chisa (Subnet 2):**
+
+```
+ping -c 2 10.190.2.2
+```
+
+![](assets/Screenshot%202026-09-17%20231819.png)
+
+**Pembuktian — Knights (Subnet 3) ke Mika (Subnet 1):**
+
+```
+ping -c 2 10.190.1.3
+```
+![](assets/Screenshot%202026-09-17%20231833.png)
+
+### 4. Kemandirian Client ke Internet (NAT Masquerade + DNS)
+
+Lain ingin agar setiap entitas (Client) memiliki kemandirian di The Wired. Firewall/iptables (NAT Masquerade) dan DNS resolver dikonfigurasikan agar setiap client dapat terhubung ke internet secara mandiri.
+
+```
 sysctl -w net.ipv4.ip_forward=1
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
@@ -76,25 +146,51 @@ iptables -A FORWARD -i eth2 -o eth0 -j ACCEPT
 iptables -A FORWARD -i eth3 -o eth0 -j ACCEPT
 iptables -A FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
 ```
-Konfigurasi DNS pada masing-masing Client:
-```BASH
+
+Pada masing-masing client:
+
+```
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 ```
-Pengujian Koneksi:
-```BASH
+
+**Verifikasi:**
+
+```
 ping -c 2 8.8.8.8
 ping -c 2 google.com
 ```
-Soal 5: Automasi Konfigurasi & Script Verifikasi Status (cek_status.sh)
-Menambahkan Persistent Rule di /etc/network/interfaces (Node lain):
-```BASH
+
+![alt text](assets/Screenshot%202026-09-16%20083650.png)
+
+### 5. Persistensi Konfigurasi Setelah Restart
+
+Eiri tetap berupaya menanamkan kekacauan ke dalam jaringan. Untuk mengantisipasi restart tiba-tiba, seluruh konfigurasi jaringan dipastikan tidak hilang saat semua node direstart dengan menambahkan konfigurasi langsung ke `/etc/network/interfaces` pada router Lain, serta membuat script verifikasi.
+
+**Menambahkan config di Lain:**
+
+```
+auto eth0
+iface eth0 inet dhcp
+auto eth1
+iface eth1 inet static
+    address 10.190.1.1
+    netmask 255.255.255.0
+auto eth2
+iface eth2 inet static
+    address 10.190.2.1
+    netmask 255.255.255.0
+auto eth3
+iface eth3 inet static
+    address 10.190.3.1
+    netmask 255.255.255.0
 up sysctl -w net.ipv4.ip_forward=1
 up iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 ```
-Script Verifikasi /root/cek_status.sh:
-```BASH
-#!/bin/sh
 
+**Script verifikasi `nano /root/cek_status.sh`:**
+
+```sh
+#!/bin/sh
 echo "=========================================="
 echo "         RINGKASAN INTERFACE IP           "
 echo "=========================================="
@@ -106,16 +202,21 @@ echo "          STATUS TABEL NAT (IPTABLES)     "
 echo "=========================================="
 iptables -t nat -L -v -n
 ```
-Eksekusi Script:
-```BASH
+
+```
 chmod +x /root/cek_status.sh
 /root/cek_status.sh
 ```
-Soal 6: Generator Traffic & Packet Sniffing pada Node Mika
-Script Traffic (/root/traffic_protocol7.sh):
-```BASH
-#!/bin/sh
+![](assets/Screenshot%202026-09-16%20085059.png)
 
+### 6. Packet Sniffing DNS/ICMP pada Node Mika
+
+Mika mencurigai adanya anomali traffic pada segmen jaringannya. Generator traffic dijalankan pada node Mika, lalu packet sniffing dilakukan menggunakan Wireshark pada interface node Mika dengan display filter khusus untuk paket berprotokol DNS atau ICMP.
+
+**`nano /root/traffic_protocol7.sh`:**
+
+```sh
+#!/bin/sh
 while true; do
     ping -c 1 10.190.1.1 > /dev/null 2>&1
     nslookup google.com 8.8.8.8 > /dev/null 2>&1
@@ -123,24 +224,36 @@ while true; do
     sleep 2
 done
 ```
-Menjalankan Script di Background:
-```BASH
+
+```
 chmod +x /root/traffic_protocol7.sh
 /root/traffic_protocol7.sh &
 ```
-Wireshark Filter: dns || icmp
-Soal 7: Konfigurasi FTP Server (chisa) & Manajemen Akses Pengguna
-Instalasi & Konfigurasi di chisa (10.190.2.2):
-```BASH
-apt install -y --allow-unauthenticated vsftpd
+
+Display filter Wireshark: `dns || icmp`
+
+![](assets/Screenshot%202026-09-16%20085555.png)
+![](assets/Screenshot%202026-09-16%20085616.png)
+
+File pcap no.6 [disini](File_pcap/soal_6.pcapng)
+
+### 7. FTP Server di Chisa dengan Kebijakan Akses per User
+
+Chisa memutuskan mendirikan FTP Server pada node miliknya dengan shared folder di `/var/wired/data`. Kebijakan akses yang diterapkan: user `alice` (read & write), user `mika` (read-only), dan user `eiri` (tanpa izin akses / blacklist).
+
+**Konfigurasi di Chisa:**
+
+```
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update && apt install -y --allow-unauthenticated vsftpd
 
 mkdir -p /var/wired/data
 chmod 777 /var/wired/data
 chown -R ftp:nogroup /var/wired/data
 
-useradd -m -s /bin/bash alice 2>/dev/null
-useradd -m -s /bin/bash mika 2>/dev/null
-useradd -m -s /bin/bash eiri 2>/dev/null
+useradd -m -s /bin/ alice 2>/dev/null
+useradd -m -s /bin/ mika 2>/dev/null
+useradd -m -s /bin/ eiri 2>/dev/null
 
 echo "alice:password" | chpasswd
 echo "mika:password" | chpasswd
@@ -154,15 +267,12 @@ local_enable=YES
 write_enable=YES
 local_umask=022
 check_shell=NO
-
 local_root=/var/wired/data
 chroot_local_user=YES
 allow_writeable_chroot=YES
-
 userlist_enable=YES
 userlist_file=/etc/vsftpd.userlist
 userlist_deny=NO
-
 user_config_dir=/etc/vsftpd_user_conf
 EOF
 
@@ -172,59 +282,145 @@ mkdir -p /etc/vsftpd_user_conf
 echo "write_enable=NO" > /etc/vsftpd_user_conf/mika
 
 service vsftpd restart
+service vsftpd status
 ```
-Pengujian Client (alice, mika, eiri): Berhasil membuktikan hak akses Read & Write untuk Alice, Read-Only untuk Mika (error 550 saat put), dan Blacklisted untuk Eiri (error 530 langsung pada saat login).
-Soal 8: Transfer Dokumen Intelijen dari Knights ke FTP Chisa
-Perintah Pengujian & Sniffing (tshark):
-```BASH
-apt update --fix-missing 
-apt install -y --allow-unauthenticated ftp wget tshark 
-cd /root 
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1lFepK4wFmx55PnRki3NsHW-ivudSR0vg' -O knights_report.txt
+
+`userlist_deny=NO` bersama `userlist_file` yang hanya memuat `alice` dan `mika` membuat kedua user tersebut menjadi satu-satunya yang diizinkan login FTP, sehingga user `eiri` otomatis ditolak (blacklist secara implisit).
+
+**Pembuktian Alice (read & write), membuat `signal_alice.txt`:**
+
+```
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt install -y --allow-unauthenticated ftp
+cd /root
+touch signal_alice.txt
+ftp 10.190.2.2
+```
+
+![](assets/Screenshot%202026-09-17%20235516.png)
+
+**Pembuktian Mika (read-only):**
+
+```
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update --fix-missing
+apt install -y --allow-unauthenticated ftp
+cd /root
+touch test_mika.txt
+ftp 10.190.2.2
+```
+![alt text](assets/Screenshot%202026-09-17%20234717.png)
+
+
+**Pembuktian Eiri (ditolak akses):**
+
+```
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update --fix-missing
+apt install -y --allow-unauthenticated ftp
+ftp 10.190.2.2
+```
+![alt text](assets/Screenshot%202026-09-17%20234753.png)
+
+
+### 8. Upload FTP dari Knights ke Chisa via Akun Alice + Analisis Wireshark
+
+Kelompok rahasia Knights perlu mengirimkan dokumen laporan intelijen ke FTP Server Chisa. Koneksi FTP client dilakukan dari node Knights ke FTP Server Chisa menggunakan akun `alice`, lalu sesi tersebut dianalisis dengan Wireshark.
+
+Jangan lupa untuk memulai capture pada Knights
+
+```
+apt update --fix-missing
+apt install -y --allow-unauthenticated ftp wget tshark
+cd /root
+wget --no-check-certificate '<link_file>' -O knights_report.txt
 
 tshark -i eth0 -f "host 10.190.2.2" -w /tmp/soal8.pcap >/dev/null 2>&1 &
 
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update && apt install -y ftp
+
 ftp 10.190.2.2
-# User: alice, Password: password
+# login sebagai alice
 passive
 put knights_report.txt
-quit 
+quit
+
 pkill tshark
+tshark -r /tmp/soal8.pcap -Y "ftp || ftp-data"
+tshark -r /tmp/soal8.pcap -Y "ftp.response.code == 229"
 ```
-Analisis & Jawaban:
-Perintah FTP untuk Upload: STOR knights_report.txt
-Kode Status Sukses Server: 226 Transfer complete
-Port Data TCP yang Dinegosiasikan (PASV/EPSV): Port 59535 (didapat dari respons 229 Entering Extended Passive Mode (|||59535|)).
 
-Soal 9: Pengunduhan Protokol Tujuh & Pembuktian Read-Only Mika
-Perintah di Node Mika:
-```BASH
+![](assets/Screenshot%202026-09-16%20102450.png)
+File pcap no 8 [disni](File_pcap/soal_8.pcapng)
+
+**Analisis & Jawaban Soal 8:**
+
+- Perintah FTP untuk Upload: STOR knights_report.txt (Terlihat pada baris nomor 33: Request: STOR knights_report.txt).
+- Kode Status Sukses Server: 226 Transfer complete (Terlihat pada baris nomor 43: Response: 226 Transfer complete).
+- Port Data TCP yang Dinegosiasikan pada Mode PASV: Saat mengetik perintah passive, koneksi berpindah ke mode Active (EPRT). Nan, untuk mendapatkan respon mode PASV, jalankan perintah berikut untuk melihat baris respon 227 Entering Passive Mode beserta portnya. 59535 (Didapat dari respon 229 Entering Extended Passive Mode (|||59535|))
+
+
+### 9. Download File dari Chisa oleh Mika + Pembatasan Read-Only
+
+Mika mengakses dokumen Protokol Tujuh dari FTP Server Chisa. Dari node Mika, file tersebut diunduh menggunakan akun `mika`, kemudian pembatasan read-only dibuktikan dengan mencoba mengunggah file baru dari akun `mika`.
+
+**Di Chisa**  menyiapkan file:
+
+```
 cd /var/wired/data
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1tKZu0rcti4t-fXX4jtXDSKDBWzsawfoN' -O protocol7_manifesto.txt
+wget --no-check-certificate '<link_file>' -O protocol7_manifesto.txt
 chmod 644 /var/wired/data/protocol7_manifesto.txt
+```
+![alt text](assets/Screenshot%202026-09-16%20102337.png)
 
+**Di Mika:**
+
+```
 cd /root
 touch test_upload_mika.txt
 ftp 10.190.2.2
-# Login user: mika / password: password
+# User: mika | Password: password
 get protocol7_manifesto.txt
 put test_upload_mika.txt
 quit
 ```
-Hasil: Mika berhasil mengunduh file, tetapi gagal melakukan upload dengan pesan error 550 Permission denied.
 
-Soal 10: Uji Ketahanan Latensi & ICMP Ping ke Server Chisa
-Perintah Pengujian:
-```BASH
+Mika berhasil download namun gagal upload (550 Permission denied)
+![alt text](assets/no9mika.png)
+
+Upload dari akun `mika` ditolak server dengan pesan `550 Permission denied` karena konfigurasi `write_enable=NO` pada `/etc/vsftpd_user_conf/mika`, sesuai kebijakan read-only.
+
+### 10. Uji Latensi Ping Knights → Chisa (77 Paket, 128 Byte, Interval 0.3s)
+
+Knights melancarkan uji ketahanan koneksi ke server Chisa untuk menguji latensi jaringan The Wired.
+
+```
 ping -c 77 -s 128 -i 0.3 10.190.2.2
 ```
-Analisis Wireshark & Statistik:
-Echo Request (Knights $\rightarrow$ Chisa): Type 8, Code 0
-Echo Reply (Chisa $\rightarrow$ Knights): Type 0, Code 0
-Packet Loss: 0% (77 transmitted, 77 received)
-Round Trip Time (RTT): Min: 0.254 ms, Avg: 0.586 ms, Max: 1.216 ms
 
-Soal 11: Analisis Kelemahan Telnet (Plaintext & Character-at-a-Time)
+**1. Detail Header ICMP**
+
+- Echo (Ping) Request (Knights → Chisa): **Type 8, Code 0**
+- Echo (Ping) Reply (Chisa → Knights): **Type 0, Code 0**
+
+**2. Statistik Transmisi & Packet Loss**
+
+- Packets Transmitted: **77**
+- Packets Received: **77**
+- Packet Loss: **0%**
+
+**3. Statistik Latensi Network (RTT)**
+
+- Min: **0.219 ms**
+- Avg: **0.449 ms**
+- Max: **0.948 ms**
+
+![](assets/Screenshot%202026-09-16%20102920.png)
+![](assets/Screenshot%202026-09-16%20102944.png)
+File pcap no.10 [disini](File_pcap/soal_10.pcapng)
+
+### Soal 11: Analisis Kelemahan Telnet (Plaintext & Character at a Time)
 Konfigurasi di Node Chisa:
 ```BASH
 useradd -m -s /bin/bash phantom_user
